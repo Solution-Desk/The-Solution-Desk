@@ -26,9 +26,10 @@ export const apiRateLimit = createRateLimit(15 * 60 * 1000, 30); // 30 API calls
 export const webhookRateLimit = createRateLimit(5 * 60 * 1000, 10); // 10 webhook calls per 5 minutes
 
 // Security headers configuration
-export const securityHeaders = helmet({
-  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? {
-    directives: {
+const isProduction = process.env.NODE_ENV === 'production';
+
+const cspDirectives = isProduction
+  ? {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
@@ -36,8 +37,37 @@ export const securityHeaders = helmet({
       scriptSrc: ["'self'", "'unsafe-inline'"],
       connectSrc: ["'self'", "https://api.stripe.com", "wss:", "ws:"],
       frameSrc: ["'self'", "https://js.stripe.com"],
-    },
-  } : false, // Disable CSP in development to allow Vite HMR
+    }
+  : {
+      // Relaxed CSP for non-production environments (e.g. Vite HMR) while keeping CSP enabled
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      // Allow additional script sources commonly used by dev servers/HMR
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'",
+        "'unsafe-eval'",
+        "http://localhost:*",
+        "https://localhost:*",
+      ],
+      // Allow websocket and dev-server connections in dev
+      connectSrc: [
+        "'self'",
+        "https://api.stripe.com",
+        "wss:",
+        "ws:",
+        "http://localhost:*",
+        "https://localhost:*",
+      ],
+      frameSrc: ["'self'", "https://js.stripe.com"],
+    };
+
+export const securityHeaders = helmet({
+  contentSecurityPolicy: {
+    directives: cspDirectives,
+  },
   crossOriginEmbedderPolicy: false,
 });
 
