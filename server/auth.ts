@@ -8,6 +8,7 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 import connectPg from "connect-pg-simple";
+import csurf from "csurf";
 
 declare global {
   namespace Express {
@@ -55,6 +56,19 @@ export function setupAuth(app: Express) {
 
   app.set("trust proxy", 1);
   app.use(session(sessionSettings));
+
+  const csrfProtection = csurf({ cookie: false });
+  app.use(csrfProtection);
+  app.use((req, res, next) => {
+    try {
+      // Expose the CSRF token so that downstream handlers/templates can use it.
+      res.locals.csrfToken = req.csrfToken();
+    } catch {
+      // If CSRF token is not applicable for this request, continue without setting it.
+    }
+    next();
+  });
+
   app.use(passport.initialize());
   app.use(passport.session());
 
